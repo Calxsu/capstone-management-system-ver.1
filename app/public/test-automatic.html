@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .loading {
+            color: #6c757d;
+        }
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>Automatic Test</h1>
+    <div id="results" class="results">Loading...</div>
+
+    <script>
+        // Run automatically on page load
+        (async function() {
+            const resultsDiv = document.getElementById('results');
+            try {
+                const response = await fetch('/api/panel-members/available?search=network');
+                if (!response.ok) {
+                    throw new Error('HTTP error ' + response.status);
+                }
+                const data = await response.json();
+                resultsDiv.textContent = 'Success:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+                console.error('Error:', error);
+            }
+        })();
+    </script>
+</body>
+</html>

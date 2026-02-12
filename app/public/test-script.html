@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Script Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <div x-data="testData()">
+        <h1>Direct Script Test</h1>
+        
+        <button @click="runTest()">Run Test</button>
+        
+        <div x-show="loading">
+            Loading...
+        </div>
+        
+        <div x-show="!loading">
+            <h2>Results:</h2>
+            <div x-html="results"></div>
+        </div>
+    </div>
+
+    <script>
+        function testData() {
+            return {
+                loading: false,
+                results: '',
+                
+                async runTest() {
+                    this.loading = true;
+                    this.results = '';
+                    
+                    try {
+                        // Make a direct API call to the search endpoint
+                        const response = await fetch('/api/panel-members/available?search=network');
+                        
+                        if (!response.ok) {
+                            throw new Error('HTTP error ' + response.status);
+                        }
+                        
+                        const data = await response.json();
+                        this.results = JSON.stringify(data, null, 2);
+                        
+                    } catch (error) {
+                        this.results = 'Error: ' + error.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

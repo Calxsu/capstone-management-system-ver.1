@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Search Functionality</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        input {
+            width: 300px;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        .result-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .console {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div x-data="testData()">
+        <h1>Test Search Functionality</h1>
+        
+        <div class="container">
+            <h2>Panel Member Search</h2>
+            <input type="text" x-model="panelSearch" @input="searchPanels()" placeholder="Search panel members by email">
+            <button @click="testSearch()">Test Search</button>
+            
+            <div class="results">
+                <h3>Search Results:</h3>
+                <template x-for="panel in availablePanels" :key="panel.id">
+                    <div class="result-item">
+                        <p x-text="panel.email"></p>
+                        <p x-text="panel.specialization"></p>
+                    </div>
+                </template>
+                <p x-show="availablePanels.length === 0">No panel members found</p>
+            </div>
+            
+            <div class="console" x-text="consoleOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        function testData() {
+            return {
+                availablePanels: [],
+                panelSearch: '',
+                consoleOutput: '',
+                
+                log(text) {
+                    this.consoleOutput += text + '\n';
+                    console.log(text);
+                },
+                
+                async searchPanels() {
+                    this.log('Searching for: ' + this.panelSearch);
+                    const searchTerm = this.panelSearch;
+                    try {
+                        const response = await fetch(`/api/panel-members/available?search=${encodeURIComponent(searchTerm)}`);
+                        this.log('Response status: ' + response.status);
+                        if (!response.ok) {
+                            throw new Error('HTTP error ' + response.status);
+                        }
+                        const data = await response.json();
+                        this.log('Response data: ' + JSON.stringify(data, null, 2));
+                        this.availablePanels = data;
+                    } catch (error) {
+                        this.log('Error: ' + error.message);
+                        console.error('Error fetching panels:', error);
+                    }
+                },
+                
+                testSearch() {
+                    this.panelSearch = 'network';
+                    this.searchPanels();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
