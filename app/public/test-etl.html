@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test ETL Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .filter-section { margin-bottom: 20px; }
+        .filter-group { margin-right: 20px; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test ETL Report</h1>
+        
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="schoolYear">School Year:</label>
+                <select id="schoolYear">
+                    <option value="">All School Years</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="role">Role:</label>
+                <select id="role">
+                    <option value="">All Roles</option>
+                    <option value="Adviser">Adviser</option>
+                    <option value="Chair">Chair</option>
+                    <option value="Critique">Critique</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="status">Status:</label>
+                <select id="status">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="minEtl">Min ETL:</label>
+                <input type="number" id="minEtl" step="0.1" min="0">
+            </div>
+            
+            <div class="filter-group">
+                <label for="maxEtl">Max ETL:</label>
+                <input type="number" id="maxEtl" step="0.1" min="0">
+            </div>
+            
+            <div class="filter-group">
+                <label for="search">Search:</label>
+                <input type="text" id="search">
+            </div>
+            
+            <button onclick="applyFilters()">Apply Filters</button>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Roles</th>
+                    <th>Status</th>
+                    <th>Groups</th>
+                    <th>ETL Total</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+        
+        <div id="summary" style="margin-top: 20px;">
+            <p>Total Members: <span id="totalMembers">0</span></p>
+            <p>Total ETL: <span id="totalEtl">0.00</span></p>
+            <p>Average ETL: <span id="averageEtl">0.00</span></p>
+            <p>Total Groups: <span id="totalGroups">0</span></p>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let schoolYears = [];
+        
+        // Load school years
+        async function loadSchoolYears() {
+            try {
+                const response = await fetch('/api/school-years');
+                schoolYears = await response.json();
+                const select = document.getElementById('schoolYear');
+                schoolYears.forEach(sy => {
+                    const option = document.createElement('option');
+                    option.value = sy.id;
+                    option.textContent = sy.year + ' - ' + sy.semester;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading school years:', error);
+            }
+        }
+        
+        // Load report data
+        async function loadData() {
+            try {
+                const params = new URLSearchParams();
+                const schoolYearId = document.getElementById('schoolYear').value;
+                if (schoolYearId) {
+                    params.append('school_year_id', schoolYearId);
+                }
+                
+                const response = await fetch(`/api/reports/etl?${params.toString()}`);
+                const data = await response.json();
+                
+                allData = data.data.panel_members.map(m => ({
+                    ...m,
+                    name: m.name || m.email.split('@')[0].replace('.', ' '),
+                    role: m.roles.length > 0 ? m.roles[0] : 'Critique',
+                    roles: m.roles || [m.role || 'Critique'],
+                    groups_count: m.groups_count,
+                    etl_total: m.etl_total
+                }));
+                
+                renderData(allData);
+                updateSummary(allData);
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        // Apply filters to the data
+        function applyFilters() {
+            let data = [...allData];
+            
+            const roleFilter = document.getElementById('role').value;
+            if (roleFilter) {
+                data = data.filter(m => m.roles && m.roles.includes(roleFilter));
+            }
+            
+            const statusFilter = document.getElementById('status').value;
+            if (statusFilter) {
+                data = data.filter(m => m.status === statusFilter);
+            }
+            
+            const minEtl = document.getElementById('minEtl').value;
+            if (minEtl !== '') {
+                data = data.filter(m => m.etl_total >= parseFloat(minEtl));
+            }
+            
+            const maxEtl = document.getElementById('maxEtl').value;
+            if (maxEtl !== '') {
+                data = data.filter(m => m.etl_total <= parseFloat(maxEtl));
+            }
+            
+            const searchFilter = document.getElementById('search').value.toLowerCase();
+            if (searchFilter) {
+                data = data.filter(m => m.name.toLowerCase().includes(searchFilter));
+            }
+            
+            renderData(data);
+            updateSummary(data);
+        }
+        
+        // Render the data in the table
+        function renderData(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            data.forEach(member => {
+                const row = tbody.insertRow();
+                
+                const nameCell = row.insertCell();
+                nameCell.textContent = member.name;
+                
+                const rolesCell = row.insertCell();
+                rolesCell.textContent = member.roles.join(', ');
+                
+                const statusCell = row.insertCell();
+                statusCell.textContent = member.status;
+                
+                const groupsCell = row.insertCell();
+                groupsCell.textContent = member.groups_count;
+                
+                const etlCell = row.insertCell();
+                etlCell.textContent = member.etl_total.toFixed(2);
+            });
+        }
+        
+        // Update the summary stats
+        function updateSummary(data) {
+            const totalMembers = data.length;
+            const totalEtl = data.reduce((sum, m) => sum + m.etl_total, 0);
+            const averageEtl = totalMembers > 0 ? totalEtl / totalMembers : 0;
+            const totalGroups = data.reduce((sum, m) => sum + (m.groups_count || 0), 0);
+            
+            document.getElementById('totalMembers').textContent = totalMembers;
+            document.getElementById('totalEtl').textContent = totalEtl.toFixed(2);
+            document.getElementById('averageEtl').textContent = averageEtl.toFixed(2);
+            document.getElementById('totalGroups').textContent = totalGroups;
+        }
+        
+        // Event listener for school year filter
+        document.getElementById('schoolYear').addEventListener('change', loadData);
+        
+        // Initialize the page
+        window.addEventListener('load', () => {
+            loadSchoolYears();
+            loadData();
+        });
+    </script>
+</body>
+</html>

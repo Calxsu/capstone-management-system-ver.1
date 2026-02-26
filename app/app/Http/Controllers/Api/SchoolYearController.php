@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Repositories\SchoolYearRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 
 class SchoolYearController extends Controller
 {
@@ -58,13 +59,35 @@ class SchoolYearController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
+        // Normalize semester value from form (1/2) to database format (1st Semester/2nd Semester)
+        $semester = $request->input('semester');
+        if ($semester === '1') {
+            $semester = '1st Semester';
+        } elseif ($semester === '2') {
+            $semester = '2nd Semester';
+        }
+        
         $validated = $request->validate([
-            'year' => 'sometimes|string|max:20|unique:school_years,year,' . $id,
+            'year' => [
+                'sometimes',
+                'string',
+                'max:20',
+                Rule::unique('school_years')
+                    ->where(function ($query) use ($semester) {
+                        $query->where('semester', $semester);
+                    })
+                    ->ignore($id)
+            ],
             'semester' => 'sometimes|string|max:50',
             'is_active' => 'boolean',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after:start_date',
         ]);
+
+        // Use normalized semester value
+        if (isset($semester)) {
+            $validated['semester'] = $semester;
+        }
 
         $updated = $this->schoolYearRepository->update($id, $validated);
 

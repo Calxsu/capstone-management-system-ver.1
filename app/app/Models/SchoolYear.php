@@ -14,6 +14,11 @@ class SchoolYear extends Model
         'start_date',
         'end_date',
     ];
+    
+    protected $attributes = [
+        'start_date' => null,
+        'end_date' => null,
+    ];
 
     protected $casts = [
         'is_active' => 'boolean',

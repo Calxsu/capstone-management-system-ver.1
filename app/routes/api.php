@@ -89,6 +89,9 @@ Route::apiResource('reports', ReportController::class)->names([
 
 // Import API
 Route::post('import', [ImportController::class, 'import'])->name('api.import.store');
+Route::post('import/preview', [ImportController::class, 'preview'])->name('api.import.preview');
+Route::post('import/confirm', [ImportController::class, 'confirmImport'])->name('api.import.confirm');
+Route::post('import/cancel', [ImportController::class, 'cancelImport'])->name('api.import.cancel');
 Route::get('import/template', [ImportController::class, 'template'])->name('api.import.template');
 Route::get('import/template-types', [ImportController::class, 'templateTypes'])->name('api.import.template-types');
 Route::get('import/template/{type}', [ImportController::class, 'downloadTemplate'])->name('api.import.download-template');

@@ -37,22 +37,44 @@ class ReportController extends Controller
             'school_year' => $schoolYearId ? SchoolYear::find($schoolYearId)?->year : 'All Years',
             'panel_members' => [],
             'summary' => [
-                'total_panel_members' => $panelMembers->count(),
+                'total_panel_members' => 0,
                 'total_etl' => 0,
                 'average_etl' => 0,
+                'total_groups' => 0,
             ]
         ];
 
         $totalETL = 0;
+        $totalGroups = 0;
+        $activePanelMembers = 0;
+        
         foreach ($panelMembers as $panelMember) {
-            $etl = $this->computeETLAction->execute($panelMember->id);
+            // Calculate ETL specifically for the selected school year
+            $etl = $panelMember->etl_base ?? 0;
+            foreach ($panelMember->groups as $group) {
+                $role = $group->pivot->role;
+                $etlValues = [
+                    'Adviser' => 0.5,
+                    'Chair' => 0.3,
+                    'Critique' => 0.3,
+                ];
+                if (isset($etlValues[$role])) {
+                    $etl += $etlValues[$role];
+                }
+            }
 
+            // Get all unique roles this panel member has in the selected school year
+            $roles = $panelMember->groups->pluck('pivot.role')->unique()->toArray();
+            
+            // Only include panel members with group assignments in the selected school year
+            if (count($panelMember->groups) > 0) {
             $reportData['panel_members'][] = [
                 'id' => $panelMember->id,
                 'email' => $panelMember->email,
-                'role' => $panelMember->role,
+                'name' => $panelMember->email, // Use email as name since we removed the name column
+                'roles' => $roles,
                 'status' => $panelMember->status,
-                'groups_assigned' => $panelMember->groups->count(),
+                'groups_count' => $panelMember->groups->count(),
                 'etl_total' => $etl,
                 'groups' => $panelMember->groups->map(function ($group) {
                     return [
@@ -64,13 +86,18 @@ class ReportController extends Controller
                 }),
             ];
 
-            $totalETL += $etl;
+                $totalETL += $etl;
+                $totalGroups += $panelMember->groups->count();
+                $activePanelMembers++;
+            }
         }
 
+        $reportData['summary']['total_panel_members'] = $activePanelMembers;
         $reportData['summary']['total_etl'] = $totalETL;
-        $reportData['summary']['average_etl'] = $panelMembers->count() > 0
-            ? round($totalETL / $panelMembers->count(), 2)
+        $reportData['summary']['average_etl'] = $activePanelMembers > 0
+            ? round($totalETL / $activePanelMembers, 2)
             : 0;
+        $reportData['summary']['total_groups'] = $totalGroups;
 
         // Sort by ETL descending
         usort($reportData['panel_members'], function ($a, $b) {
