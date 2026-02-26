@@ -70,6 +70,7 @@ class StudentController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
+                'student_id' => 'required|string|max:50|unique:students,student_id',
                 'specialization' => 'nullable|in:Networking,Systems Development',
             ]);
 
