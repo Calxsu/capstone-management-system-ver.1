@@ -213,4 +213,54 @@ class EvaluationController extends Controller
 
         return response()->json($summary);
     }
+
+    /**
+     * Update all evaluations for a group's CAP stage (API version).
+     */
+    public function updateGroup(Request $request, Group $group): JsonResponse
+    {
+        $validated = $request->validate([
+            'cap_stage' => 'required|integer|min:1|max:2',
+            'date' => 'required|date',
+            'grades' => 'required|array',
+            'grades.*' => 'nullable|numeric|min:0|max:100',
+            'remarks' => 'nullable|array',
+            'remarks.*' => 'nullable|string|max:2000',
+        ]);
+
+        $capStage = $validated['cap_stage'];
+        $date = $validated['date'];
+        $grades = $validated['grades'];
+        $remarks = $validated['remarks'] ?? [];
+
+        $updatedEvaluations = [];
+
+        foreach ($grades as $panelMemberId => $grade) {
+            if ($grade === null || $grade === '') {
+                continue;
+            }
+
+            // Find existing or create new evaluation
+            $evaluation = Evaluation::updateOrCreate(
+                [
+                    'group_id' => $group->id,
+                    'panel_member_id' => $panelMemberId,
+                    'cap_stage' => $capStage,
+                ],
+                [
+                    'grade' => $grade,
+                    'date' => $date,
+                    'remarks' => $remarks[$panelMemberId] ?? null,
+                    'student_id' => $group->students->first()?->id,
+                ]
+            );
+
+            $updatedEvaluations[] = $evaluation;
+        }
+
+        return response()->json([
+            'message' => 'Grades updated successfully.',
+            'evaluations' => $updatedEvaluations
+        ]);
+    }
 }

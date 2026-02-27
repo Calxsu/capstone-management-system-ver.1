@@ -7,6 +7,7 @@ use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
@@ -71,7 +72,7 @@ class StudentController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'student_id' => 'required|string|max:50|unique:students,student_id',
-                'specialization' => 'nullable|in:Networking,Systems Development',
+                'specialization' => 'required|in:Networking,Systems Development',
             ]);
 
             $student = Student::create($validated);

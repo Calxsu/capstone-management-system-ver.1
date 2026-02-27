@@ -72,7 +72,6 @@
                                 <span class="text-lg font-bold text-emerald-600">2</span>
                             </div>
                             <span class="font-medium text-gray-700">CAPSTONE 2</span>
-                            <span class="text-xs text-gray-500 block">(Completed)</span>
                         </div>
                     </label>
                 </div>

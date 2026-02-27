@@ -16,6 +16,25 @@
         </a>
     </div>
 
+    <!-- Error Alert -->
+    <div x-show="errors && Object.keys(errors).length > 0" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform -translate-y-2"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-800">
+        <svg class="w-5 h-5 mr-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+        </svg>
+        <div>
+            <p class="font-semibold">Validation Error</p>
+            <ul class="text-sm mt-1 list-disc list-inside">
+                <template x-for="(errorMessages, field) in errors" :key="field">
+                    <li x-text="errorMessages[0]"></li>
+                </template>
+            </ul>
+        </div>
+    </div>
+
     <!-- Success Message -->
     <div x-show="successMessage" x-cloak
          x-transition:enter="transition ease-out duration-300"
@@ -52,7 +71,7 @@
                             <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
-                            Full Name
+                            Full Name <span class="text-red-500">*</span>
                         </span>
                     </label>
                     <input type="text"
@@ -62,6 +81,7 @@
                            :class="errors.name ? 'border-red-500' : 'border-gray-200'"
                            placeholder="Enter full name"
                            required>
+                    <p class="mt-1.5 text-xs text-gray-500">Format: Surname, Firstname Middle Initial (e.g., Dela Cruz, Juan A)</p>
                     <p x-show="errors.name" class="mt-2 text-sm text-red-600 flex items-center">
                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                         <span x-text="errors.name"></span>
@@ -77,7 +97,7 @@
                             <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                             </svg>
-                            Specialization
+                            Specialization <span class="text-red-500">*</span>
                         </span>
                     </label>
                     <select id="specialization"

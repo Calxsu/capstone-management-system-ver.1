@@ -11,19 +11,6 @@ class SchoolYear extends Model
         'year',
         'semester',
         'is_active',
-        'start_date',
-        'end_date',
-    ];
-    
-    protected $attributes = [
-        'start_date' => null,
-        'end_date' => null,
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean',
-        'start_date' => 'date',
-        'end_date' => 'date',
     ];
 
     public function groups(): HasMany

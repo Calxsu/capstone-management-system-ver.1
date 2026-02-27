@@ -21,7 +21,7 @@
             <select x-model="statusFilter" @change="filter()" class="px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
                 <option value="">All Status</option>
                 <option value="1">CAPSTONE 1</option>
-                <option value="2">CAPSTONE 2 (Completed)</option>
+                <option value="2">CAPSTONE 2</option>
             </select>
         </div>
         <a href="{{ route('groups.create') }}" class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">

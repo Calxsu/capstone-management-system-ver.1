@@ -13,6 +13,19 @@
         Back to Students
     </a>
 
+    <!-- Error Alert -->
+    <div x-show="errors && Object.keys(errors).length > 0" x-transition class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700">
+        <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+        <div>
+            <p class="font-semibold">Validation Error</p>
+            <ul class="text-sm mt-1 list-disc list-inside">
+                <template x-for="(errorMessages, field) in errors" :key="field">
+                    <li x-text="errorMessages[0]"></li>
+                </template>
+            </ul>
+        </div>
+    </div>
+
     <!-- Success Message -->
     <div x-show="successMessage" x-transition class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center text-emerald-700">
         <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
@@ -39,7 +52,7 @@
         <form @submit.prevent="submitForm" class="p-6 space-y-6">
             <!-- Student ID -->
             <div class="animate-slide-up" style="animation-delay: 0.05s">
-                <label for="student_id" class="block text-sm font-semibold text-gray-700 mb-2">Student ID</label>
+                <label for="student_id" class="block text-sm font-semibold text-gray-700 mb-2">Student ID <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +72,7 @@
 
             <!-- Full Name -->
             <div class="animate-slide-up" style="animation-delay: 0.1s">
-                <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">Full Name <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,6 +84,7 @@
                            :class="errors.name ? 'border-red-500' : ''"
                            placeholder="Enter full name" required>
                 </div>
+                <p class="mt-1.5 text-xs text-gray-500">Format: Surname, Firstname Middle Initial (e.g., Dela Cruz, Juan A)</p>
                 <p x-show="errors.name" class="mt-2 text-sm text-red-600 flex items-center">
                     <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                     <span x-text="errors.name?.[0]"></span>
@@ -79,7 +93,7 @@
 
             <!-- Specialization -->
             <div class="animate-slide-up" style="animation-delay: 0.15s">
-                <label for="specialization" class="block text-sm font-semibold text-gray-700 mb-2">Specialization</label>
+                <label for="specialization" class="block text-sm font-semibold text-gray-700 mb-2">Specialization <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

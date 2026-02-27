@@ -18,7 +18,7 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center">
                 <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mr-4">
-                    {{ substr('G', 0, 1) }}
+                    {{ substr($group->project_title ?? ('Group #' . $group->id), 0, 1) }}
                 </div>
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">Group #{{ $group->id ?? '' }}</h2>
@@ -164,9 +164,37 @@ function groupEvaluationsData() {
             try {
                 const response = await fetch('/api/groups/' + this.groupId + '/evaluations/summary');
                 const data = await response.json();
-                this.evaluations = data.evaluations || [];
-                this.averageGrade = data.average_grade || 0;
-                this.panelCount = data.panel_count || 0;
+                
+                // Transform API response to match expected format
+                if (data.evaluations_by_student) {
+                    // Flatten all evaluations from all students
+                    this.evaluations = [];
+                    Object.values(data.evaluations_by_student).forEach(studentData => {
+                        if (studentData.evaluations) {
+                            studentData.evaluations.forEach(eval => {
+                                this.evaluations.push({
+                                    id: Date.now() + Math.random(),
+                                    panel_member: { email: eval.panel_member },
+                                    panel_member_id: null,
+                                    cap_stage: 1,
+                                    grade: eval.grade,
+                                    evaluation_date: eval.date,
+                                    comments: null
+                                });
+                            });
+                        }
+                    });
+                }
+                
+                // Calculate average grade from all evaluations
+                if (this.evaluations.length > 0) {
+                    const total = this.evaluations.reduce((sum, e) => sum + parseFloat(e.grade || 0), 0);
+                    this.averageGrade = total / this.evaluations.length;
+                }
+                
+                // Get unique panel count
+                const uniquePanels = new Set(this.evaluations.map(e => e.panel_member?.email).filter(Boolean));
+                this.panelCount = uniquePanels.size;
             } catch (error) {
                 console.error('Error loading evaluations:', error);
                 // Fallback: try loading all evaluations

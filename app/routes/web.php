@@ -16,7 +16,7 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// Dashboard
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
 // School Years Management

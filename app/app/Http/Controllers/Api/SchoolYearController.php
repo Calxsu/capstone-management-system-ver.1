@@ -32,8 +32,6 @@ class SchoolYearController extends Controller
             'year' => 'required|string|max:20|unique:school_years,year',
             'semester' => 'required|string|max:50',
             'is_active' => 'boolean',
-            'start_date' => 'sometimes|date',
-            'end_date' => 'sometimes|date|after:start_date',
         ]);
 
         $schoolYear = $this->schoolYearRepository->create($validated);
@@ -80,8 +78,6 @@ class SchoolYearController extends Controller
             ],
             'semester' => 'sometimes|string|max:50',
             'is_active' => 'boolean',
-            'start_date' => 'sometimes|date',
-            'end_date' => 'sometimes|date|after:start_date',
         ]);
 
         // Use normalized semester value

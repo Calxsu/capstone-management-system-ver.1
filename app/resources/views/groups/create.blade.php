@@ -134,9 +134,6 @@
                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                placeholder="Search panel members by email">
                     </div>
-                    <button type="button" onclick="testSearch()" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                        Test Search (Network)
-                    </button>
                     
                     <!-- Search Results -->
                     <div x-show="panelSearch && availablePanels.length > 0" class="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
@@ -246,7 +243,6 @@ function createGroupData() {
         async loadPanels() {
             const response = await fetch('/api/panel-members/available');
             this.availablePanels = await response.json();
-            console.log('Available panels loaded:', JSON.stringify(this.availablePanels, null, 2));
         },
 
         formatSchoolYear(sy) {
@@ -269,21 +265,18 @@ function createGroupData() {
         searchPanels() {
             // Load panels with search filter from API
             const searchTerm = this.panelSearch;
-            console.log('searchPanels called with term:', searchTerm);
             
             // Show loading state
             this.availablePanels = [];
             
             fetch(`/api/panel-members/available?search=${encodeURIComponent(searchTerm)}`)
                 .then(response => {
-                    console.log('Response status:', response.status);
                     if (!response.ok) {
                         throw new Error('HTTP error ' + response.status);
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Response data:', JSON.stringify(data, null, 2));
                     this.availablePanels = data;
                 })
                 .catch(error => {

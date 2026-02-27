@@ -31,7 +31,7 @@ class StudentController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'specialization' => 'nullable|in:Networking,Systems Development',
+            'specialization' => 'required|in:Networking,Systems Development',
         ]);
 
         Student::create($request->only(['name', 'specialization']));

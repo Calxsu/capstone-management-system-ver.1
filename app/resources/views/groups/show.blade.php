@@ -27,11 +27,11 @@
                 <div class="flex items-start justify-between">
                     <div class="flex items-center">
                         <div class="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center text-white text-2xl font-bold mr-4">
-                            <span x-text="group?.name?.charAt(0) || 'G'"></span>
+                            <span x-text="(group?.project_title || group?.name || 'Group #' + group?.id)?.charAt(0) || 'G'"></span>
                         </div>
                         <div>
-                            <h1 class="text-2xl font-bold text-white" x-text="group?.name"></h1>
-                            <p class="text-blue-100 mt-1" x-text="group?.title || 'No project title'"></p>
+                            <h1 class="text-2xl font-bold text-white" x-text="group?.project_title || group?.name || 'Group #' + group?.id"></h1>
+                            <p class="text-blue-100 mt-1" x-text="'School Year: ' + (group?.school_year?.year || 'N/A')"></p>
                         </div>
                     </div>
                     <div class="flex items-center space-x-2">
@@ -45,19 +45,27 @@
             </div>
             
             <!-- Stats Row -->
-            <div class="grid grid-cols-4 divide-x divide-gray-100">
+            <div class="grid grid-cols-6 divide-x divide-gray-100">
                 <div class="p-4 text-center">
                     <p class="text-2xl font-bold text-gray-900" x-text="group?.students?.length || 0"></p>
                     <p class="text-sm text-gray-500">Students</p>
                 </div>
                 <div class="p-4 text-center">
-                    <p class="text-2xl font-bold text-gray-900" x-text="group?.panels?.length || 0"></p>
+                    <p class="text-2xl font-bold text-gray-900" x-text="group?.panel_members?.length || 0"></p>
                     <p class="text-sm text-gray-500">Panel Members</p>
+                </div>
+                <div class="p-4 text-center">
+                    <p class="text-2xl font-bold text-blue-600" x-text="getCap1Average()"></p>
+                    <p class="text-sm text-gray-500">CAP 1 Avg</p>
+                </div>
+                <div class="p-4 text-center">
+                    <p class="text-2xl font-bold text-purple-600" x-text="getCap2Average()"></p>
+                    <p class="text-sm text-gray-500">CAP 2 Avg</p>
                 </div>
                 <div class="p-4 text-center">
                     <span class="px-3 py-1 text-lg font-bold rounded-full" 
                           :class="getCapBadgeClass(group?.cap_stage)"
-                          x-text="'CAPSTONE ' + (group?.cap_stage || 1)"></span>
+                          x-text="'CAP ' + (group?.cap_stage || 1)"></span>
                     <p class="text-sm text-gray-500 mt-1">Current Stage</p>
                 </div>
                 <div class="p-4 text-center">
@@ -109,13 +117,13 @@
                         </svg>
                         Panel Members
                     </h3>
-                    <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full" x-text="(group?.panels?.length || 0) + ' members'"></span>
+                    <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full" x-text="(group?.panel_members?.length || 0) + ' members'"></span>
                 </div>
                 <div class="divide-y divide-gray-50">
-                    <template x-for="panel in group?.panels || []" :key="panel.id">
+                    <template x-for="panel in group?.panel_members || []" :key="panel.id">
                         <div class="p-4 hover:bg-gray-50 transition-colors flex items-center">
                             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold mr-3"
-                                 :class="getPanelGradient(panel.role)">
+                                 :class="getPanelGradient(panel.pivot?.role || panel.role)">
                                 <span x-text="panel.email?.charAt(0)?.toUpperCase()"></span>
                             </div>
                             <div class="flex-1">
@@ -123,11 +131,11 @@
                                 <p class="text-sm text-gray-500" x-text="panel.specialization || 'Faculty'"></p>
                             </div>
                             <span class="px-2 py-1 text-xs font-semibold rounded-full"
-                                  :class="getPanelBadgeClass(panel.role)"
-                                  x-text="panel.role"></span>
+                                  :class="getPanelBadgeClass(panel.pivot?.role || panel.role)"
+                                  x-text="panel.pivot?.role || panel.role"></span>
                         </div>
                     </template>
-                    <div x-show="!group?.panels?.length" class="p-8 text-center text-gray-500">
+                    <div x-show="!group?.panel_members?.length" class="p-8 text-center text-gray-500">
                         No panel members assigned
                     </div>
                 </div>
@@ -149,6 +157,7 @@
                 <table class="w-full" x-show="evaluations.length > 0">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">CAP Stage</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Grade</th>
@@ -158,6 +167,7 @@
                     <tbody class="divide-y divide-gray-100">
                         <template x-for="eval in evaluations" :key="eval.id">
                             <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-gray-900 font-medium" x-text="eval.student?.name || 'Student'"></td>
                                 <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(eval.evaluation_date || eval.created_at)"></td>
                                 <td class="px-6 py-4">
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full"
@@ -207,7 +217,13 @@ function groupDetails() {
         async loadEvaluations(groupId) {
             try {
                 const response = await fetch('/api/evaluations?group_id=' + groupId);
-                this.evaluations = await response.json();
+                const data = await response.json();
+                // API returns array with group+evaluations objects, extract evaluations from first item
+                if (Array.isArray(data) && data.length > 0) {
+                    this.evaluations = data[0].evaluations || [];
+                } else {
+                    this.evaluations = [];
+                }
             } catch (error) {
                 console.error('Error loading evaluations:', error);
             }
@@ -241,6 +257,20 @@ function groupDetails() {
             if (grade >= 80) return 'text-blue-600';
             if (grade >= 75) return 'text-yellow-600';
             return 'text-red-600';
+        },
+
+        getCap1Average() {
+            const cap1Evals = this.evaluations.filter(e => e.cap_stage == 1);
+            if (cap1Evals.length === 0) return 'N/A';
+            const sum = cap1Evals.reduce((acc, e) => acc + parseFloat(e.grade || 0), 0);
+            return (sum / cap1Evals.length).toFixed(1);
+        },
+
+        getCap2Average() {
+            const cap2Evals = this.evaluations.filter(e => e.cap_stage == 2);
+            if (cap2Evals.length === 0) return 'N/A';
+            const sum = cap2Evals.reduce((acc, e) => acc + parseFloat(e.grade || 0), 0);
+            return (sum / cap2Evals.length).toFixed(1);
         }
     }
 }
