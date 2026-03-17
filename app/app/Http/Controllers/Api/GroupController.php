@@ -100,7 +100,7 @@ class GroupController extends Controller
             return response()->json(['message' => 'Group not found'], 404);
         }
 
-        return response()->json($group->load(['schoolYear', 'students', 'panelMembers', 'evaluations']));
+        return response()->json($group->load(['schoolYear', 'students', 'panelMembers', 'evaluations.panelMember']));
     }
 
     /**

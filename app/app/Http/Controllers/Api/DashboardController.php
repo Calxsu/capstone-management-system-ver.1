@@ -82,7 +82,8 @@ class DashboardController extends Controller
         // Recent evaluations
         $recentEvals = DB::table('evaluations')
             ->join('groups', 'evaluations.group_id', '=', 'groups.id')
-            ->select('evaluations.created_at', 'groups.project_title as group_name', 'evaluations.cap_stage', 'evaluations.grade')
+            ->join('panel_members', 'evaluations.panel_member_id', '=', 'panel_members.id')
+            ->select('evaluations.created_at', 'groups.project_title as group_name', 'evaluations.cap_stage', 'evaluations.grade', 'panel_members.email as evaluator_email')
             ->orderBy('evaluations.created_at', 'desc')
             ->limit(5)
             ->get();
@@ -91,7 +92,7 @@ class DashboardController extends Controller
             $activities[] = [
                 'type' => 'evaluation',
                 'message' => "{$eval->group_name} evaluated for CAPSTONE {$eval->cap_stage}",
-                'detail' => "Grade: {$eval->grade}",
+                'detail' => "By: {$eval->evaluator_email}, Grade: {$eval->grade}",
                 'timestamp' => $eval->created_at,
             ];
         }

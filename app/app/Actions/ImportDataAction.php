@@ -9,13 +9,15 @@ use App\Repositories\PanelMemberRepositoryInterface;
 use App\Repositories\SchoolYearRepositoryInterface;
 use App\Repositories\StudentRepositoryInterface;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ImportDataAction
 {
-    // Store pending imports for preview/confirm flow
-    private static array $pendingImports = [];
+    // Cache key prefix for pending imports
+    private const CACHE_PREFIX = 'pending_import_';
 
     public function __construct(
         private SchoolYearRepositoryInterface $schoolYearRepository,
@@ -67,11 +69,11 @@ class ImportDataAction
 
         // Generate preview token for confirm/cancel
         $previewToken = Str::random(32);
-        self::$pendingImports[$previewToken] = [
+        Cache::put(self::CACHE_PREFIX . $previewToken, [
             'data' => $results,
             'created_at' => now(),
             'expires_at' => now()->addHour(),
-        ];
+        ], now()->addHour());
 
         $results['preview_token'] = $previewToken;
 
@@ -83,19 +85,29 @@ class ImportDataAction
      */
     public function confirm(string $previewToken, int $schoolYearId, string $importType = 'students'): array
     {
-        if (!isset(self::$pendingImports[$previewToken])) {
+        $cacheKey = self::CACHE_PREFIX . $previewToken;
+        $pendingData = Cache::get($cacheKey);
+        
+        if (!$pendingData) {
             throw new \RuntimeException('Preview token not found or expired');
         }
-
-        $pendingData = self::$pendingImports[$previewToken];
         
         // Check if expired
-        if ($pendingData['expires_at']->isPast()) {
-            unset(self::$pendingImports[$previewToken]);
+        if (now()->greaterThan($pendingData['expires_at'])) {
+            Cache::forget($cacheKey);
             throw new \RuntimeException('Preview has expired');
         }
 
         $previewData = $pendingData['data'];
+
+        // Debug: Check what's in preview data
+        Log::info('Preview Data:', [
+            'token' => $previewToken,
+            'importType' => $importType,
+            'students' => $previewData['preview']['students'] ?? [],
+            'panels' => $previewData['preview']['panel_members'] ?? [],
+            'groups' => $previewData['preview']['groups'] ?? []
+        ]);
 
         DB::beginTransaction();
         try {
@@ -110,12 +122,16 @@ class ImportDataAction
 
             // Process and save preview data
             if ($importType === 'students') {
+                Log::info('Processing ' . count($previewData['preview']['students'] ?? []) . ' students');
                 foreach ($previewData['preview']['students'] as $studentData) {
                     try {
+                        Log::info('Creating student with data:', $studentData);
                         $student = $this->studentRepository->create($studentData);
                         $results['students'][] = $student;
+                        Log::info('Student created successfully:', ['id' => $student->id]);
                     } catch (\Exception $e) {
                         $results['errors'][] = "Failed to create student: " . $e->getMessage();
+                        Log::error('Student creation failed:', ['data' => $studentData, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
                     }
                 }
             } elseif ($importType === 'panel_members') {
@@ -125,6 +141,7 @@ class ImportDataAction
                         $results['panel_members'][] = $panel;
                     } catch (\Exception $e) {
                         $results['errors'][] = "Failed to create panel member: " . $e->getMessage();
+                        Log::error('Panel creation failed:', ['data' => $panelData, 'error' => $e->getMessage()]);
                     }
                 }
             } elseif ($importType === 'groups') {
@@ -134,19 +151,23 @@ class ImportDataAction
                         $results['groups'][] = $group;
                     } catch (\Exception $e) {
                         $results['errors'][] = "Failed to create group: " . $e->getMessage();
+                        Log::error('Group creation failed:', ['data' => $groupData, 'error' => $e->getMessage()]);
                     }
                 }
             }
 
             DB::commit();
 
-            // Clear pending import
-            unset(self::$pendingImports[$previewToken]);
+            // Clear pending import from cache
+            Cache::forget($cacheKey);
+
+            Log::info('Import completed:', $results);
 
             return $results;
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Import transaction failed:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             throw $e;
         }
     }
@@ -156,8 +177,9 @@ class ImportDataAction
      */
     public function cancel(string $previewToken): bool
     {
-        if (isset(self::$pendingImports[$previewToken])) {
-            unset(self::$pendingImports[$previewToken]);
+        $cacheKey = self::CACHE_PREFIX . $previewToken;
+        if (Cache::has($cacheKey)) {
+            Cache::forget($cacheKey);
             return true;
         }
         return false;
@@ -311,11 +333,62 @@ class ImportDataAction
             }
         }
 
+        // Generate student_id (required field)
+        $studentId = $this->generateUniqueStudentId($name);
+
         $results['preview']['students'][] = [
             'name' => $name,
+            'student_id' => $studentId,
             'specialization' => $specialization,
-            'status' => 'active',
         ];
+    }
+
+    /**
+     * Parse student names from CSV string.
+     * Names are in "LastName, FirstName" format separated by commas,
+     * so every two comma-separated values form one full name.
+     */
+    private function parseStudentNames(string $namesStr): array
+    {
+        $parts = array_map('trim', explode(',', $namesStr));
+        $parts = array_values(array_filter($parts, fn($p) => $p !== ''));
+        $names = [];
+
+        for ($i = 0; $i < count($parts); $i += 2) {
+            if (isset($parts[$i + 1])) {
+                $names[] = $parts[$i] . ', ' . $parts[$i + 1];
+            } else {
+                // Odd trailing part — treat as a single name
+                $names[] = $parts[$i];
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Generate a unique student ID based on name.
+     */
+    private function generateUniqueStudentId(string $name): string
+    {
+        // Remove special characters and split name
+        $nameParts = explode(' ', preg_replace('/[^A-Za-z0-9\s]/', '', $name));
+        
+        // Create initials from name parts
+        $initials = '';
+        foreach ($nameParts as $part) {
+            if (strlen(trim($part)) > 0) {
+                $initials .= strtoupper(substr(trim($part), 0, 1));
+            }
+        }
+        
+        // Generate unique ID by checking database
+        do {
+            $random = rand(1000, 9999);
+            $studentId = $initials . $random;
+        } while (Student::where('student_id', $studentId)->exists());
+        
+        return $studentId;
     }
 
     /**
@@ -402,8 +475,7 @@ class ImportDataAction
         }
 
         // Check for duplicate groups (same students, same school year)
-        $studentNames = array_map('trim', explode(',', $studentNamesStr));
-        $studentNames = array_filter($studentNames);
+        $studentNames = $this->parseStudentNames($studentNamesStr);
         sort($studentNames);
         
         // Check if similar group exists
@@ -423,9 +495,9 @@ class ImportDataAction
 
         $groupData = [
             'student_names' => $studentNamesStr,
-            'chair_email' => $chairEmail,
-            'panel1_email' => $panel1Email,
-            'panel2_email' => $panel2Email,
+            'adviser_email' => $chairEmail,
+            'chair_email' => $panel1Email,
+            'critique_email' => $panel2Email,
             'capstone_level' => $capstoneLevel,
         ];
 
@@ -445,35 +517,33 @@ class ImportDataAction
         ]);
 
         // Process students
-        $studentNames = array_map('trim', explode(',', $groupData['student_names']));
-        $studentNames = array_filter($studentNames);
+        $studentNames = $this->parseStudentNames($groupData['student_names']);
         foreach ($studentNames as $studentName) {
             $student = \App\Models\Student::where('name', $studentName)->first();
             if (!$student) {
                 $student = $this->studentRepository->create([
                     'name' => $studentName,
+                    'student_id' => $this->generateUniqueStudentId($studentName),
                     'specialization' => 'Networking',
-                    'status' => 'active',
                 ]);
             }
             $group->students()->attach($student->id);
         }
 
         // Process chair/adviser
-        $chair = $this->getOrCreatePanelMember($groupData['chair_email']);
-        $group->panelMembers()->attach($chair->id, ['role' => 'Adviser']);
-        $group->panelMembers()->attach($chair->id, ['role' => 'Chair']);
+        $adviser = $this->getOrCreatePanelMember($groupData['adviser_email']);
+        $group->panelMembers()->attach($adviser->id, ['role' => 'Adviser']);
 
-        // Process Panel 1
-        if (!empty($groupData['panel1_email'])) {
-            $panel1 = $this->getOrCreatePanelMember($groupData['panel1_email']);
-            $group->panelMembers()->attach($panel1->id, ['role' => 'Critique']);
+        // Process Chair (Panel 1)
+        if (!empty($groupData['chair_email'])) {
+            $chair = $this->getOrCreatePanelMember($groupData['chair_email']);
+            $group->panelMembers()->attach($chair->id, ['role' => 'Chair']);
         }
 
-        // Process Panel 2
-        if (!empty($groupData['panel2_email'])) {
-            $panel2 = $this->getOrCreatePanelMember($groupData['panel2_email']);
-            $group->panelMembers()->attach($panel2->id, ['role' => 'Critique']);
+        // Process Critique (Panel 2)
+        if (!empty($groupData['critique_email'])) {
+            $critique = $this->getOrCreatePanelMember($groupData['critique_email']);
+            $group->panelMembers()->attach($critique->id, ['role' => 'Critique']);
         }
 
         return $group;
@@ -532,8 +602,8 @@ class ImportDataAction
 
         $student = $this->studentRepository->create([
             'name' => $name,
+            'student_id' => $this->generateUniqueStudentId($name),
             'specialization' => $specialization,
-            'status' => 'active',
         ]);
 
         $results['students'][] = $student;
@@ -627,15 +697,14 @@ class ImportDataAction
         $results['groups'][] = $group;
 
         // Process students
-        $studentNames = array_map('trim', explode(',', $studentNamesStr));
-        $studentNames = array_filter($studentNames);
+        $studentNames = $this->parseStudentNames($studentNamesStr);
         foreach ($studentNames as $studentName) {
             $student = \App\Models\Student::where('name', $studentName)->first();
             if (!$student) {
                 $student = $this->studentRepository->create([
                     'name' => $studentName,
+                    'student_id' => $this->generateUniqueStudentId($studentName),
                     'specialization' => 'Networking',
-                    'status' => 'active',
                 ]);
                 $results['students'][] = $student;
             }
@@ -659,11 +728,10 @@ class ImportDataAction
 
         $chair = $getOrCreatePanelMember($chairEmail);
         $group->panelMembers()->attach($chair->id, ['role' => 'Adviser']);
-        $group->panelMembers()->attach($chair->id, ['role' => 'Chair']);
 
         if (!empty($panel1Email)) {
             $panel1 = $getOrCreatePanelMember($panel1Email);
-            $group->panelMembers()->attach($panel1->id, ['role' => 'Critique']);
+            $group->panelMembers()->attach($panel1->id, ['role' => 'Chair']);
         }
 
         if (!empty($panel2Email)) {

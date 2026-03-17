@@ -4,6 +4,10 @@
 @section('subtitle', 'Upload and import data from CSV files')
 
 @section('content')
+<style>
+    @keyframes shrink-width { from { width: 100%; } to { width: 0%; } }
+    .animate-shrink-width { animation: shrink-width 5s linear forwards; }
+</style>
 <div x-data="importData()" x-init="init()" class="max-w-4xl mx-auto">
     <!-- Import Section -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-slide-up">
@@ -93,7 +97,7 @@
 
             <!-- Preview / Import Button -->
             <div class="flex gap-3">
-                <button @click="previewData()"
+                <button @click="runPreview()"
                         :disabled="!selectedFile || !importType || !selectedSchoolYearId || previewing"
                         class="flex-1 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                     <svg x-show="previewing" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -189,7 +193,7 @@
                             </template>
                         </template>
                         <template x-if="importType === 'groups'">
-                            <template x-for="col in ['name_of_students_per_group', 'advisee/chair_(clsu2_email)', 'panel_1_(clsu2_email)', 'panel_2_(clsu2_email)', 'capstone_level']">
+                            <template x-for="col in ['name_of_students_per_group', 'adviser_(clsu2_email)', 'chair_panel_(clsu2_email)', 'critique_(clsu2_email)', 'capstone_level']">
                                 <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full" x-text="col"></span>
                             </template>
                         </template>
@@ -350,8 +354,9 @@
                                     <tr>
                                         <th class="px-4 py-2 text-left text-purple-800">#</th>
                                         <th class="px-4 py-2 text-left text-purple-800">Students</th>
-                                        <th class="px-4 py-2 text-left text-purple-800">Chair/Adviser</th>
-                                        <th class="px-4 py-2 text-left text-purple-800">Panels</th>
+                                        <th class="px-4 py-2 text-left text-purple-800">Adviser</th>
+                                        <th class="px-4 py-2 text-left text-purple-800">Chair</th>
+                                        <th class="px-4 py-2 text-left text-purple-800">Critique</th>
                                         <th class="px-4 py-2 text-left text-purple-800">Level</th>
                                     </tr>
                                 </thead>
@@ -360,8 +365,9 @@
                                         <tr class="border-t border-purple-200">
                                             <td class="px-4 py-2 text-gray-500" x-text="index + 1"></td>
                                             <td class="px-4 py-2 font-medium" x-text="group?.student_names?.substring(0, 50) + (group?.student_names?.length > 50 ? '...' : '')"></td>
-                                            <td class="px-4 py-2" x-text="group?.chair_email"></td>
-                                            <td class="px-4 py-2 text-xs" x-text="[group?.panel1_email, group?.panel2_email].filter(Boolean).join(', ')"></td>
+                                            <td class="px-4 py-2 text-xs" x-text="group?.adviser_email"></td>
+                                            <td class="px-4 py-2 text-xs" x-text="group?.chair_email || '—'"></td>
+                                            <td class="px-4 py-2 text-xs" x-text="group?.critique_email || '—'"></td>
                                             <td class="px-4 py-2">
                                                 <span class="px-2 py-1 bg-purple-200 text-purple-700 rounded-full text-xs" x-text="group?.capstone_level"></span>
                                             </td>
@@ -476,6 +482,73 @@
             </div>
         </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4" class="fixed bottom-6 right-6 z-[60] max-w-md w-full" style="display: none;">
+        <div :class="{
+            'bg-white border-l-4': true,
+            'border-green-500 shadow-green-100': toast.type === 'success',
+            'border-red-500 shadow-red-100': toast.type === 'error',
+            'border-yellow-500 shadow-yellow-100': toast.type === 'warning'
+        }" class="rounded-xl shadow-2xl overflow-hidden">
+            <div class="p-4">
+                <div class="flex items-start">
+                    <!-- Icon -->
+                    <div class="flex-shrink-0">
+                        <template x-if="toast.type === 'success'">
+                            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                        </template>
+                        <template x-if="toast.type === 'error'">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
+                        </template>
+                        <template x-if="toast.type === 'warning'">
+                            <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                        </template>
+                    </div>
+                    <!-- Content -->
+                    <div class="ml-3 flex-1">
+                        <p class="text-sm font-semibold text-gray-900" x-text="toast.title"></p>
+                        <p class="mt-1 text-sm text-gray-600" x-text="toast.message"></p>
+                        <!-- Detail items -->
+                        <div x-show="toast.details && toast.details.length > 0" class="mt-2 space-y-1">
+                            <template x-for="(detail, i) in toast.details" :key="i">
+                                <div class="flex items-center text-xs">
+                                    <span :class="{
+                                        'text-green-600': toast.type === 'success',
+                                        'text-red-600': toast.type === 'error',
+                                        'text-yellow-600': toast.type === 'warning'
+                                    }" class="mr-1.5">&bull;</span>
+                                    <span class="text-gray-600" x-text="detail"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <!-- Close button -->
+                    <button @click="dismissToast()" class="flex-shrink-0 ml-2 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Progress bar for auto-dismiss -->
+            <div x-show="toast.type === 'success'" class="h-1 bg-gray-100">
+                <div class="h-full bg-green-500 animate-shrink-width"></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -493,6 +566,20 @@ function importData() {
         previewToken: null,
         importResult: null,
         importHistory: [],
+        toast: { show: false, type: 'success', title: '', message: '', details: [], timer: null },
+
+        showToast(type, title, message, details = []) {
+            if (this.toast.timer) clearTimeout(this.toast.timer);
+            this.toast = { show: true, type, title, message, details, timer: null };
+            if (type === 'success') {
+                this.toast.timer = setTimeout(() => { this.toast.show = false; }, 5000);
+            }
+        },
+
+        dismissToast() {
+            if (this.toast.timer) clearTimeout(this.toast.timer);
+            this.toast.show = false;
+        },
 
         isValidFile(filename) {
             const ext = filename.toLowerCase().split('.').pop();
@@ -548,21 +635,9 @@ function importData() {
             } catch (error) {
                 console.error('Failed to load school years:', error);
             }
-            
-            // Debug: Auto-change import type after 2 seconds
-            setTimeout(() => {
-                console.log('Debug: Changing import type to panel_members');
-                this.importType = 'panel_members';
-            }, 2000);
-            
-            // Debug: Auto-change import type after 5 seconds
-            setTimeout(() => {
-                console.log('Debug: Changing import type to groups');
-                this.importType = 'groups';
-            }, 5000);
         },
 
-        async previewData() {
+        async runPreview() {
             if (!this.selectedFile || !this.importType || !this.selectedSchoolYearId) return;
 
             this.previewing = true;
@@ -589,7 +664,7 @@ function importData() {
                     this.previewToken = data.data.preview_token;
                     this.showPreview = true;
                 } else {
-                    alert('Preview failed: ' + (data.message || data.error || 'Unknown error'));
+                    this.showToast('error', 'Preview Failed', data.message || data.error || 'Unknown error');
                     this.importResult = {
                         success: false,
                         message: data.message || 'Preview failed',
@@ -597,7 +672,7 @@ function importData() {
                     };
                 }
             } catch (error) {
-                alert('Preview failed: ' + error.message);
+                this.showToast('error', 'Preview Failed', error.message);
                 this.importResult = {
                     success: false,
                     message: 'Preview failed: ' + error.message
@@ -631,7 +706,7 @@ function importData() {
                 if (response.ok) {
                     this.closePreview();
                 } else {
-                    alert(data.message || 'Failed to cancel import');
+                    this.showToast('error', 'Cancel Failed', data.message || 'Failed to cancel import');
                 }
             } catch (error) {
                 console.error('Cancel error:', error);
@@ -641,7 +716,7 @@ function importData() {
 
         async confirmImport() {
             if (!this.previewToken) {
-                alert('No preview token found. Please preview the data first.');
+                this.showToast('error', 'Import Error', 'No preview token found. Please preview the data first.');
                 return;
             }
 
@@ -672,13 +747,18 @@ function importData() {
                 const errors = Array.isArray(data.data?.errors) ? data.data.errors : (data.data?.errors ? [data.data.errors] : []);
                 const totalImported = studentsImported + panelsImported + groupsImported;
 
-                // Show alert based on result
+                // Show toast based on result
                 if (response.ok && totalImported > 0) {
-                    alert('Import Successful!\n\nImported: ' + totalImported + ' record(s)\n- Students: ' + studentsImported + '\n- Panel Members: ' + panelsImported + '\n- Groups: ' + groupsImported);
+                    const details = [];
+                    if (studentsImported > 0) details.push(studentsImported + ' student' + (studentsImported > 1 ? 's' : ''));
+                    if (panelsImported > 0) details.push(panelsImported + ' panel member' + (panelsImported > 1 ? 's' : ''));
+                    if (groupsImported > 0) details.push(groupsImported + ' group' + (groupsImported > 1 ? 's' : ''));
+                    this.showToast('success', 'Import Successful!', 'Imported ' + totalImported + ' record' + (totalImported > 1 ? 's' : '') + ' successfully.', details);
                 } else if (response.ok && totalImported === 0) {
-                    alert('Import completed but no records were imported.\n\nPlease check the errors and try again.');
+                    this.showToast('warning', 'No Records Imported', 'Import completed but no records were imported. Please check the errors and try again.');
                 } else {
-                    alert('Import Failed!\n\n' + (data.message || data.error || 'An error occurred during import'));
+                    const errorDetails = errors.slice(0, 5);
+                    this.showToast('error', 'Import Failed', data.message || data.error || 'An error occurred during import.', errorDetails);
                 }
 
                 this.importResult = {
@@ -705,7 +785,7 @@ function importData() {
                     this.removeFile();
                 }
             } catch (error) {
-                alert('Import failed: ' + error.message);
+                this.showToast('error', 'Import Failed', error.message);
                 this.importResult = {
                     success: false,
                     message: 'Import failed: ' + error.message

@@ -12,7 +12,6 @@ class Student extends Model
         'name',
         'student_id',
         'specialization',
-        'status',
     ];
 
     public function groups(): BelongsToMany

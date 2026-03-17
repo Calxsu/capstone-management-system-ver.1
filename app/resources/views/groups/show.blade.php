@@ -157,7 +157,7 @@
                 <table class="w-full" x-show="evaluations.length > 0">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Professor</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">CAP Stage</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Grade</th>
@@ -167,7 +167,7 @@
                     <tbody class="divide-y divide-gray-100">
                         <template x-for="eval in evaluations" :key="eval.id">
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 text-sm text-gray-900 font-medium" x-text="eval.student?.name || 'Student'"></td>
+                                <td class="px-6 py-4 text-sm text-gray-900 font-medium" x-text="eval.panel_member?.email || 'Panel Member'"></td>
                                 <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(eval.evaluation_date || eval.created_at)"></td>
                                 <td class="px-6 py-4">
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full"

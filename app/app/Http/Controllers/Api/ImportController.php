@@ -6,6 +6,7 @@ use App\Actions\ImportDataAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImportController extends Controller
@@ -89,9 +90,13 @@ class ImportController extends Controller
             $rowsParsed = $results['rows_parsed'] ?? null;
             $totalImported = $studentsImported + $panelsImported + $groupsImported;
 
+            // Debug: Log what's happening
+            Log::info('Import Results:', $results);
+            Log::info('Total Imported:', ['total' => $totalImported, 'students' => $studentsImported, 'panels' => $panelsImported, 'groups' => $groupsImported]);
+
             if (($rowsParsed !== null && $rowsParsed > 0) && $totalImported === 0) {
                 return response()->json([
-                    'message' => 'Import completed but no records were imported',
+                    'message' => 'Import completed but no records were imported. ' . (!empty($results['errors']) ? implode('; ', array_slice($results['errors'], 0, 3)) : 'All rows were skipped (duplicates or validation errors).'),
                     'data' => [
                         'school_year' => $results['school_year']->year,
                         'rows_parsed' => $rowsParsed,
@@ -115,11 +120,13 @@ class ImportController extends Controller
             ]);
 
         } catch (\RuntimeException $e) {
+            Log::error('RuntimeException in confirmImport:', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'message' => 'Import failed — preview may have expired',
                 'error' => $e->getMessage(),
             ], 422);
         } catch (\Exception $e) {
+            Log::error('Exception in confirmImport:', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'message' => 'Import failed',
                 'error' => $e->getMessage()

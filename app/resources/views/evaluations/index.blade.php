@@ -31,7 +31,7 @@
     </div>
 
     <!-- Statistics -->
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl p-4 border border-gray-100 animate-slide-up" style="animation-delay: 0.1s">
             <div class="flex items-center justify-between">
                 <div>
