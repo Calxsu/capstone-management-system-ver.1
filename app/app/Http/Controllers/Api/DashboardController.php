@@ -8,7 +8,6 @@ use App\Models\PanelMember;
 use App\Models\Student;
 use App\Models\Group;
 use App\Models\Evaluation;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -89,26 +88,28 @@ class DashboardController extends Controller
             ->get();
 
         foreach ($recentEvals as $eval) {
+            $groupName = $eval->group_name ?: 'Untitled Group';
             $activities[] = [
                 'type' => 'evaluation',
-                'message' => "{$eval->group_name} evaluated for CAPSTONE {$eval->cap_stage}",
-                'detail' => "By: {$eval->evaluator_email}, Grade: {$eval->grade}",
+                'message' => "{$groupName} evaluated for CAPSTONE {$eval->cap_stage}",
+                'detail' => "Evaluator: {$eval->evaluator_email}, Grade: {$eval->grade}",
                 'timestamp' => $eval->created_at,
             ];
         }
 
         // Recent group creations
         $recentGroups = DB::table('groups')
-            ->select('created_at', 'project_title as name')
+            ->select('created_at', 'project_title', 'title_optional', 'cap_stage')
             ->orderBy('created_at', 'desc')
             ->limit(3)
             ->get();
 
         foreach ($recentGroups as $group) {
+            $groupName = $group->project_title ?: ($group->title_optional ?: 'Untitled Group');
             $activities[] = [
                 'type' => 'group',
-                'message' => "New group created: {$group->name}",
-                'detail' => '',
+                'message' => "New group registered",
+                'detail' => "{$groupName} - CAPSTONE " . ($group->cap_stage ?? 1),
                 'timestamp' => $group->created_at,
             ];
         }

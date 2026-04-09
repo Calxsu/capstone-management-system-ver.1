@@ -187,7 +187,7 @@
         <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 animate-slide-up" style="animation-delay: 0.7s">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
-                <button class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">View All</button>
+                <a href="{{ route('dashboard.recent-activity') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">View All</a>
             </div>
             <div class="space-y-4">
                 <template x-for="(activity, index) in recentActivities" :key="index">
@@ -198,10 +198,19 @@
                             </svg>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900" x-text="activity.title"></p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-medium text-gray-900" x-text="activity.title"></p>
+                                <span class="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full" :class="activity.badgeClass" x-text="activity.typeLabel"></span>
+                            </div>
                             <p class="text-xs text-gray-500 mt-0.5" x-text="activity.description"></p>
                         </div>
                         <span class="text-xs text-gray-400 flex-shrink-0" x-text="activity.time"></span>
+                    </div>
+                </template>
+
+                <template x-if="recentActivities.length === 0">
+                    <div class="rounded-xl border border-dashed border-gray-200 p-5 text-center text-sm text-gray-500">
+                        No recent activity yet.
                     </div>
                 </template>
             </div>
@@ -306,9 +315,12 @@ function dashboardData() {
         chart: null,
         recentActivities: [],
         
-        init() {
-            this.loadDashboardStats();
-            this.loadRecentActivity();
+        async init() {
+            await Promise.all([
+                this.loadDashboardStats(),
+                this.loadRecentActivity()
+            ]);
+
             this.$nextTick(() => this.initChart());
         },
         
@@ -318,14 +330,20 @@ function dashboardData() {
                 const statsResponse = await fetch('/api/dashboard/stats');
                 if (statsResponse.ok) {
                     const data = await statsResponse.json();
-                    this.stats.students = data.students;
-                    this.stats.panelMembers = data.panelMembers;
-                    this.stats.groups = data.groups;
-                    this.stats.evaluations = data.evaluations;
-                    this.capStatus = data.capProgress;
-                    this.averageGrades = data.averageGrades;
-                    this.completionRate = data.completionRate;
-                    this.activeGroups = data.activeGroups;
+                    this.stats.schoolYears = Number(data.schoolYears ?? 0);
+                    this.stats.students = Number(data.students ?? 0);
+                    this.stats.panelMembers = Number(data.panelMembers ?? 0);
+                    this.stats.groups = Number(data.groups ?? 0);
+                    this.stats.evaluations = Number(data.evaluations ?? 0);
+
+                    // Keep object shape stable for Alpine reactivity and chart reads.
+                    this.capStatus.cap1 = Number(data.capProgress?.cap1 ?? 0);
+                    this.capStatus.cap2 = Number(data.capProgress?.cap2 ?? 0);
+                    this.averageGrades.cap1 = Number(data.averageGrades?.cap1 ?? 0);
+                    this.averageGrades.cap2 = Number(data.averageGrades?.cap2 ?? 0);
+
+                    this.completionRate = Number(data.completionRate ?? 0);
+                    this.activeGroups = Number(data.activeGroups ?? 0);
                     this.updateChart();
                     return;
                 }
@@ -345,8 +363,8 @@ function dashboardData() {
                 this.stats.groups = groups.length;
                 this.stats.evaluations = evaluations.length;
 
-                this.capStatus.cap1 = groups.filter(g => g.cap_stage === 1).length;
-                this.capStatus.cap2 = groups.filter(g => g.cap_stage === 2).length;
+                this.capStatus.cap1 = groups.filter(g => Number(g.cap_stage) === 1).length;
+                this.capStatus.cap2 = groups.filter(g => Number(g.cap_stage) === 2).length;
 
                 if (groups.length > 0) {
                     this.completionRate = Math.round((this.capStatus.cap2 / groups.length) * 100);
@@ -364,10 +382,20 @@ function dashboardData() {
                 if (response.ok) {
                     const activities = await response.json();
                     this.recentActivities = activities.map(a => ({
-                        title: a.message,
-                        description: a.detail,
+                        title: (a.message || 'Activity update').replace(/:\s*$/, ''),
+                        description: a.detail && a.detail.trim() ? a.detail : 'No additional detail available',
                         time: this.timeAgo(a.timestamp),
-                        color: a.type === 'evaluation' ? 'bg-gradient-to-br from-amber-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                        typeLabel: a.type || 'activity',
+                        badgeClass: a.type === 'evaluation'
+                            ? 'bg-amber-100 text-amber-700'
+                            : a.type === 'group'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-indigo-100 text-indigo-700',
+                        color: a.type === 'evaluation'
+                            ? 'bg-gradient-to-br from-amber-500 to-orange-500'
+                            : a.type === 'group'
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                                : 'bg-gradient-to-br from-indigo-500 to-indigo-600'
                     }));
                 }
             } catch (error) {
@@ -396,7 +424,7 @@ function dashboardData() {
                     labels: ['CAPSTONE 1', 'CAPSTONE 2'],
                     datasets: [{
                         label: 'Groups',
-                        data: [0, 0],
+                        data: [this.capStatus.cap1, this.capStatus.cap2],
                         backgroundColor: [
                             'rgba(59, 130, 246, 0.8)', 
                             'rgba(16, 185, 129, 0.8)'
@@ -430,11 +458,16 @@ function dashboardData() {
                     }
                 }
             });
+
+            this.updateChart();
         },
         
         updateChart() {
             if (!this.chart) return;
-            this.chart.data.datasets[0].data = [this.capStatus.cap1, this.capStatus.cap2];
+            this.chart.data.datasets[0].data = [
+                Number(this.capStatus.cap1 || 0),
+                Number(this.capStatus.cap2 || 0)
+            ];
             this.chart.update('active');
         }
     }

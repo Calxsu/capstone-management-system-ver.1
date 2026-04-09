@@ -18,6 +18,7 @@ Route::get('/', function () {
 
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/dashboard/recent-activity', [DashboardController::class, 'recentActivity'])->name('dashboard.recent-activity');
 
 // School Years Management
 Route::resource('school-years', SchoolYearController::class)->names([
